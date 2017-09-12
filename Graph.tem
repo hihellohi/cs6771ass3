@@ -1,9 +1,14 @@
-#include <vector>
-#include <stdexcept>
+template <typename N, typename E>
+bool Graph<N,E>::compareNode::operator()(const std::weak_ptr<Node> &a, const std::weak_ptr<Node> &b){
+	if(a.expired() || b.expired()){
+		return false;
+	}
+	return a.lock()->data_ < b.lock()->data_;
+}
 
 template <typename N, typename E>
-bool Graph::addNode(const N &val) {
-	if(nodes_.count(val)){
+bool Graph<N,E>::addNode(const N &val) {
+	if(nodes_.find(val) == nodes_.end()){
 		nodes_[val] = std::make_shared<Node>(val);
 		return true;
 	}
@@ -11,23 +16,38 @@ bool Graph::addNode(const N &val) {
 }
 
 template <typename N, typename E>
-bool Graph::isNode(const N &val) const {
+bool Graph<N,E>::isNode(const N &val) const {
 	return nodes_.count(val);
 }
 
 template <typename N, typename E>
-void Graph::printNodes() const {
-	std::vector<shared_ptr<Node>> vec(nodes_.size());
-	std::transform(nodes_.cbegin(), nodes_.cend(), vec.begin(), [](auto entry) { return entry->second; });
-	std::stable_sort(vec.begin(), vec.end(), [](auto a, auto b) { return a->degree_ > b->degree_; });
-	std::transform(vec.cbegin, vec.cend(), std::ostream_iterator<T>(cout, "\n"), [](auto entry) { return *entry; });
+void Graph<N,E>::printNodes() const {
+	std::vector<std::shared_ptr<Node>> vec(nodes_.size());
+	std::transform(nodes_.cbegin(), nodes_.cend(), vec.begin(), 
+			[](const auto &entry) { return entry.second; });
+	std::stable_sort(vec.begin(), vec.end(), 
+			[](const auto &a, const auto &b) { return a->degree_ > b->degree_; });
+	std::transform(vec.cbegin(), vec.cend(), 
+			std::ostream_iterator<N>(std::cout, "\n"), 
+			[](const auto &node) { return node->data_; });
 }
 
 template <typename N, typename E>
-void Graph::printEdges(const N& val) const {
-	for(auto weightEntry : nodes_.at(val)) {
-		for(auto nodeEntry : weightEntry->second) {
-			std::cout << nodeEntry->first
+void Graph<N,E>::printEdges(const N& val) const {
+	for(auto &weightEntry : nodes_.at(val)->neighbours_) {
+		for(auto nodeEntry = weightEntry.second.begin(); nodeEntry != weightEntry.second.end();) {
+			if(nodeEntry->expired()){
+				auto tmp = nodeEntry++;
+				weightEntry.second.erase(tmp);
+			}
+			std::cout << nodeEntry->lock()->data_ << ' ' << weightEntry.first << '\n';
+			++nodeEntry;
 		}
 	}
+}
+
+template <typename N, typename E>
+bool Graph<N,E>::addEdge(const N &src, const N &dst, const E &w){
+	std::weak_ptr<Node> d = nodes_.at(dst);
+	return nodes_.at(src)->neighbours_[w].insert(d).second;
 }
