@@ -1,0 +1,33 @@
+#include <vector>
+#include <stdexcept>
+
+template <typename N, typename E>
+bool Graph::addNode(const N &val) {
+	if(nodes_.count(val)){
+		nodes_[val] = std::make_shared<Node>(val);
+		return true;
+	}
+	return false;
+}
+
+template <typename N, typename E>
+bool Graph::isNode(const N &val) const {
+	return nodes_.count(val);
+}
+
+template <typename N, typename E>
+void Graph::printNodes() const {
+	std::vector<shared_ptr<Node>> vec(nodes_.size());
+	std::transform(nodes_.cbegin(), nodes_.cend(), vec.begin(), [](auto entry) { return entry->second; });
+	std::stable_sort(vec.begin(), vec.end(), [](auto a, auto b) { return a->degree_ > b->degree_; });
+	std::transform(vec.cbegin, vec.cend(), std::ostream_iterator<T>(cout, "\n"), [](auto entry) { return *entry; });
+}
+
+template <typename N, typename E>
+void Graph::printEdges(const N& val) const {
+	for(auto weightEntry : nodes_.at(val)) {
+		for(auto nodeEntry : weightEntry->second) {
+			std::cout << nodeEntry->first
+		}
+	}
+}
