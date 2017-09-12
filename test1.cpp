@@ -24,11 +24,11 @@ int main() {
  	g.addNode(i);
 	
 	// test if there is an edge
-	//std::cout << g.isConnected(1,2) << std::endl;
+	std::cout << g.isConnected(1,2) << std::endl;
 	
 	// add an edge and repeat the test
 	g.addEdge(i-1,i,i+1);
-	//std::cout << g.isConnected(1,2) << std::endl;
+	std::cout << g.isConnected(1,2) << std::endl;
 	
 	// print the edges
 	g.printEdges(1);

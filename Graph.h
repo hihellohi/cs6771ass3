@@ -16,9 +16,8 @@ namespace gdwg {
 		private:
 			struct Node;
 
-			class compareNode {
-				public:
-					bool operator()(const std::weak_ptr<Node> &a, const std::weak_ptr<Node> &b);
+			struct compareNode {
+				bool operator()(const std::weak_ptr<Node> &a, const std::weak_ptr<Node> &b);
 			};
 
 			struct Node {
@@ -35,8 +34,10 @@ namespace gdwg {
 			Graph() = default;
 
 			bool addNode(const N &val);
-			bool isNode(const N &val) const;
 			bool addEdge(const N &src, const N &dst, const E &w);
+
+			bool isNode(const N &val) const;
+			bool isConnected(const N& src, const N& dst) const;
 
 			void printNodes() const;
 			void printEdges(const N& val) const;
