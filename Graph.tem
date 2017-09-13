@@ -11,6 +11,22 @@ bool Graph<N,E>::compareNode::operator()(const std::weak_ptr<Node> &a, const std
 }
 
 template <typename N, typename E>
+unsigned int Graph<N,E>::sanitize(const Node &n) const {
+	unsigned int degree;
+	for(auto nodeEntry = n.neighbours_.begin(); nodeEntry != n.neighbours_.end();) {
+		if(nodeEntry->first.expired()) {
+			auto tmp = nodeEntry++;
+			n.neighbours_.erase(tmp);
+		}
+		else {
+			++nodeEntry;
+			degree += nodeEntry->second.size();
+		}
+	}
+	return degree;
+}
+
+template <typename N, typename E>
 bool Graph<N,E>::addNode(const N &val) {
 	// can be optimized? reset
 	if(nodes_.find(val) == nodes_.end()){
@@ -28,47 +44,71 @@ bool Graph<N,E>::isNode(const N &val) const {
 
 template <typename N, typename E>
 bool Graph<N,E>::isConnected(const N& src, const N& dst) const {
-	std::weak_ptr<Node> d = nodes_.at(dst);
-	nodes_.at(src)->neighbours_
-	for(const auto &entry : ) {
-		if(entry.second.find(d) != entry.second.end()){
-			return true;
-		}
-	}
-	return false;
+	std::weak_ptr<Node> d(nodes_.at(dst));
+	return nodes_.at(src)->neighbours_.count(d);
 }
 
 template <typename N, typename E>
 void Graph<N,E>::printNodes() const {
-	std::vector<std::shared_ptr<Node>> vec(nodes_.size());
+	std::vector<std::pair<unsigned int, std::shared_ptr<Node>>> vec(nodes_.size());
 	std::transform(nodes_.cbegin(), nodes_.cend(), vec.begin(), 
-			[](const auto &entry) { return entry.second; });
-	std::stable_sort(vec.begin(), vec.end(), 
-			[](const auto &a, const auto &b) { return a->degree_ > b->degree_; });
+			[this](const auto &entry) { return std::make_pair(this->sanitize(*entry.second), entry.second); });
+	std::sort(vec.begin(), vec.end(), 
+			[](const auto &a, const auto &b) { 
+				if(a.first == b.first){
+					return a.second->data_ < b.second->data_;
+				}
+				return a.first > b.first; 
+			});
 	std::transform(vec.cbegin(), vec.cend(), 
 			std::ostream_iterator<N>(std::cout, "\n"), 
-			[](const auto &node) { return node->data_; });
+			[](const auto &node) { return node.second->data_; });
 }
 
 template <typename N, typename E>
 void Graph<N,E>::printEdges(const N& val) const {
 	std::cout << "Edges attached to Node " << val << '\n';
-	for(auto &weightEntry : nodes_.at(val)->neighbours_) {
-		for(auto nodeEntry = weightEntry.second.begin(); nodeEntry != weightEntry.second.end();) {
-			if(nodeEntry->expired()){
-				auto tmp = nodeEntry++;
-				weightEntry.second.erase(tmp);
-			}
-			else{
-				std::cout << nodeEntry->lock()->data_ << ' ' << weightEntry.first << '\n';
-				++nodeEntry;
-			}
+	std::vector< std::pair<typename std::set<E>::iterator, std::shared_ptr<Node>> > vec;
+
+	Node &n = *nodes_.at(val);
+	for(auto nodeEntry = n.neighbours_.begin(); nodeEntry != n.neighbours_.end();) {
+		if(nodeEntry->first.expired()) {
+			auto tmp = nodeEntry++;
+			n.neighbours_.erase(tmp);
 		}
+		else {
+			for(auto weightEntry = nodeEntry->second.begin(); weightEntry != nodeEntry->second.end(); ++weightEntry) {
+				vec.push_back(std::make_pair(weightEntry, nodeEntry->first.lock()));
+			}
+			++nodeEntry;
+		}
+	}
+
+	std::sort(vec.begin(), vec.end(), 
+			[](const auto &a, const auto &b) { 
+				if(*a.first < *b.first) {
+					return true;
+				}
+				else if(*b.first < *a.first) {
+					return a.second->data_ < b.second->data_;
+				}
+				else{
+					return false;
+				}
+			});
+
+	if(vec.size()){
+		for(auto &edge : vec){
+			std::cout << edge.second->data_ << ' ' << *edge.first << '\n';
+		}
+	}
+	else{
+		std::cout << "(null)\n";
 	}
 }
 
 template <typename N, typename E>
 bool Graph<N,E>::addEdge(const N &src, const N &dst, const E &w){
 	std::weak_ptr<Node> d = nodes_.at(dst);
-	return nodes_.at(src)->neighbours_[w].insert(d).second;
+	return nodes_.at(src)->neighbours_[d].insert(w).second;
 }
