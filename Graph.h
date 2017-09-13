@@ -17,12 +17,12 @@ namespace gdwg {
 			struct Node;
 
 			struct compareNode {
-				bool operator()(const std::weak_ptr<Node> &a, const std::weak_ptr<Node> &b);
+				bool operator()(const std::weak_ptr<Node> &a, const std::weak_ptr<Node> &b) const;
 			};
 
 			struct Node {
 				N data_;
-				std::map<E, std::set<std::weak_ptr<Node>, compareNode>> neighbours_;
+				std::map<std::weak_ptr<Node>, std::set<E>, compareNode> neighbours_;
 				unsigned int degree_;
 
 				Node(const N &data) : data_{data} {}

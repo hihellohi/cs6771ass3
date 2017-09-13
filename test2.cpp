@@ -1,4 +1,4 @@
-// test 1: tests graph construction and node insertion 
+// test 2: tests edge insertion and print ordering
 
 #include "Graph.h"
 
@@ -16,19 +16,25 @@ int main() {
 	double d = 3.41;
 	g.addNode(static_cast<int>(d));
 	
+	g2.addNode("Hello");
 	std::string s = "world";
 	g2.addNode(s);
-	g2.addNode("Hello");
 	
 	std::shared_ptr<int> sp = std::make_shared<int>(5);
 	g3.addNode(sp);
 	g3.addNode(std::make_shared<int>(6));
 	
-	// print the nodes from each graph. 
-	std::cout << "Graph g nodes:" << std::endl;
+	// add some edges 
+	g.addEdge(2,1,3);
+	int j = 3;
+	g.addEdge(i,j,1);
+	
+	g2.addEdge("Hello","world",d);
+	
+	g.printEdges(2);
+	g2.printEdges("Hello");
+	g2.printEdges("world");
+	
+	std::cout << "Printing nodes in graph g to check print order" << std::endl;
 	g.printNodes();
-	std::cout << "Graph g2 nodes:" << std::endl;
-	g2.printNodes();
-	std::cout << "isNode test:" << std::endl;
-	std::cout << std::boolalpha << g3.isNode(sp) << std::endl;
 }
