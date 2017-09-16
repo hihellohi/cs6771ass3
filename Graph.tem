@@ -11,30 +11,110 @@ bool Graph<N,E>::compareNode::operator()(const std::weak_ptr<Node> &a, const std
 }
 
 template <typename N, typename E>
-unsigned int Graph<N,E>::sanitize(const Node &n) const {
-	unsigned int degree;
+unsigned int Graph<N,E>::getDegree(const Node &n) const {
+	unsigned int degree = 0;
+
 	for(auto nodeEntry = n.neighbours_.begin(); nodeEntry != n.neighbours_.end();) {
 		if(nodeEntry->first.expired()) {
 			auto tmp = nodeEntry++;
 			n.neighbours_.erase(tmp);
 		}
 		else {
-			++nodeEntry;
 			degree += nodeEntry->second.size();
+			++nodeEntry;
 		}
 	}
+
 	return degree;
 }
 
 template <typename N, typename E>
 bool Graph<N,E>::addNode(const N &val) {
-	// can be optimized? reset
-	if(nodes_.find(val) == nodes_.end()){
-		nodes_[val] = std::make_shared<Node>(val);
+	auto res = nodes_.insert(std::make_pair(val, std::shared_ptr<Node>()));
+	if(res.second){
+		res.first->second = std::make_shared<Node>(val);
 		return true;
 	}
-
 	return false;
+}
+
+template <typename N, typename E>
+bool Graph<N,E>::addEdge(const N &src, const N &dst, const E &w){
+	std::weak_ptr<Node> d;
+	std::shared_ptr<Node> s;
+
+	try {
+		d = nodes_.at(dst);
+		s = nodes_.at(src);
+	}
+	catch(const std::out_of_range& ex) {
+		throw std::runtime_error("Node not in graph.");
+	}
+	return s->neighbours_[d].insert(w).second;
+}
+
+template <typename N, typename E>
+bool Graph<N,E>::replace(const N& oldData, const N& newData) {
+	if(isNode(newData)) {
+		return false;
+	}
+
+	auto entry = nodes_.find(oldData);
+	if(entry == nodes_.end()) {
+		throw std::runtime_error("Node not in graph.");
+	}
+	
+	entry->second->data_ = newData;
+	nodes_[newData] = entry->second;
+	nodes_.erase(entry);
+	return true;
+}
+
+template <typename N, typename E>
+void Graph<N,E>::mergeReplace(const N& oldData, const N& newData) {
+	auto oldentry = nodes_.find(oldData), newentry = nodes_.find(newData);
+	if(oldentry == nodes_.end() || newentry == nodes_.end()) {
+		throw std::runtime_error("Node not in graph.");
+	}
+
+	std::weak_ptr<Node> oldWeak = oldentry->second, newweak = newentry->second;
+
+	for(auto &node : nodes_){
+		auto oldedges = node->neighbours_.find(oldWeak);
+		if(oldedges != node->neighbours_.end()) {
+
+		}
+	}
+}
+
+template <typename N, typename E>
+void Graph<N,E>::deleteNode(const N &node) noexcept {
+	nodes_.erase(node);
+}
+
+template <typename N, typename E>
+void Graph<N,E>::deleteEdge(const N& src, const N& dst, const E& w) noexcept {
+	std::weak_ptr<Node> d;
+	std::shared_ptr<Node> s;
+
+	try {
+		d = nodes_.at(dst);
+		s = nodes_.at(src);
+	}
+	catch(const std::out_of_range& ex) {
+		return;
+	}
+
+	auto &entry = s->neighbours_.find(d);
+	entry->second.erase(w);
+	if(entry->second.empty()) {
+		s->neighbours_.erase(entry);
+	}
+}
+
+template <typename N, typename E>
+void Graph<N,E>::clear() noexcept {
+	nodes_.clear();
 }
 
 template <typename N, typename E>
@@ -44,22 +124,35 @@ bool Graph<N,E>::isNode(const N &val) const {
 
 template <typename N, typename E>
 bool Graph<N,E>::isConnected(const N& src, const N& dst) const {
-	std::weak_ptr<Node> d(nodes_.at(dst));
-	return nodes_.at(src)->neighbours_.count(d);
+	std::weak_ptr<Node> d;
+	std::shared_ptr<Node> s;
+
+	try {
+		d = nodes_.at(dst);
+		s = nodes_.at(src);
+	}
+	catch(const std::out_of_range& ex) {
+		throw std::runtime_error("Node not in graph.");
+	}
+
+	return s->neighbours_.count(d);
 }
 
 template <typename N, typename E>
 void Graph<N,E>::printNodes() const {
 	std::vector<std::pair<unsigned int, std::shared_ptr<Node>>> vec(nodes_.size());
+
 	std::transform(nodes_.cbegin(), nodes_.cend(), vec.begin(), 
-			[this](const auto &entry) { return std::make_pair(this->sanitize(*entry.second), entry.second); });
+			[this](const auto &entry) { return std::make_pair(this->getDegree(*entry.second), entry.second); });
+
 	std::sort(vec.begin(), vec.end(), 
 			[](const auto &a, const auto &b) { 
 				if(a.first == b.first){
 					return a.second->data_ < b.second->data_;
 				}
-				return a.first > b.first; 
+				return a.first < b.first; 
 			});
+
 	std::transform(vec.cbegin(), vec.cend(), 
 			std::ostream_iterator<N>(std::cout, "\n"), 
 			[](const auto &node) { return node.second->data_; });
@@ -67,17 +160,24 @@ void Graph<N,E>::printNodes() const {
 
 template <typename N, typename E>
 void Graph<N,E>::printEdges(const N& val) const {
-	std::cout << "Edges attached to Node " << val << '\n';
-	std::vector< std::pair<typename std::set<E>::iterator, std::shared_ptr<Node>> > vec;
+	std::shared_ptr<Node> n;
+	try {
+		n = nodes_.at(val);
+	}
+	catch(const std::out_of_range& ex) {
+		throw std::runtime_error("Node not in graph.");
+	}
 
-	Node &n = *nodes_.at(val);
-	for(auto nodeEntry = n.neighbours_.begin(); nodeEntry != n.neighbours_.end();) {
+	std::cout << "Edges attached to Node " << val << '\n';
+	std::vector< std::pair<typename std::set<E>::const_iterator, std::shared_ptr<Node>> > vec;
+
+	for(auto nodeEntry = n->neighbours_.begin(); nodeEntry != n->neighbours_.end();) {
 		if(nodeEntry->first.expired()) {
 			auto tmp = nodeEntry++;
-			n.neighbours_.erase(tmp);
+			n->neighbours_.erase(tmp);
 		}
 		else {
-			for(auto weightEntry = nodeEntry->second.begin(); weightEntry != nodeEntry->second.end(); ++weightEntry) {
+			for(auto weightEntry = nodeEntry->second.cbegin(); weightEntry != nodeEntry->second.cend(); ++weightEntry) {
 				vec.push_back(std::make_pair(weightEntry, nodeEntry->first.lock()));
 			}
 			++nodeEntry;
@@ -97,18 +197,12 @@ void Graph<N,E>::printEdges(const N& val) const {
 				}
 			});
 
-	if(vec.size()){
-		for(auto &edge : vec){
+	if(vec.size()) {
+		for(const auto &edge : vec){
 			std::cout << edge.second->data_ << ' ' << *edge.first << '\n';
 		}
 	}
-	else{
+	else {
 		std::cout << "(null)\n";
 	}
-}
-
-template <typename N, typename E>
-bool Graph<N,E>::addEdge(const N &src, const N &dst, const E &w){
-	std::weak_ptr<Node> d = nodes_.at(dst);
-	return nodes_.at(src)->neighbours_[d].insert(w).second;
 }

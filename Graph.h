@@ -28,15 +28,27 @@ namespace gdwg {
 				Node(const N &data) : data_{data} {}
 			};
 
-			unsigned int sanitize(const Node &n) const;
+			unsigned int getDegree(const Node &n) const;
 
 			std::map<N, std::shared_ptr<Node>> nodes_;
 			
 		public:
 			Graph() = default;
+			Graph(Graph<N,E> &&) = default;
+			Graph<N,E> &operator=(Graph<N,E> &&) = default;
+
+			Graph(const Graph<N,E> &);
+			Graph<N,E> &operator=(const Graph<N,E> &);
 
 			bool addNode(const N &val);
 			bool addEdge(const N &src, const N &dst, const E &w);
+
+			bool replace(const N& oldData, const N& newData);
+			void mergeReplace(const N& oldData, const N& newData); 
+
+			void deleteNode(const N&) noexcept;
+			void deleteEdge(const N& src, const N& dst, const E& w) noexcept;
+			void clear() noexcept;
 
 			bool isNode(const N &val) const;
 			bool isConnected(const N& src, const N& dst) const;
