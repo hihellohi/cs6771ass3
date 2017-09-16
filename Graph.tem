@@ -11,7 +11,7 @@ bool Graph<N,E>::compareNode::operator()(const std::weak_ptr<Node> &a, const std
 }
 
 template <typename N, typename E>
-unsigned int Graph<N,E>::getDegree(const Node &n) const {
+unsigned int Graph<N,E>::cleanAndGetDegree(const Node &n) const {
 	unsigned int degree = 0;
 
 	for(auto nodeEntry = n.neighbours_.begin(); nodeEntry != n.neighbours_.end();) {
@@ -29,13 +29,33 @@ unsigned int Graph<N,E>::getDegree(const Node &n) const {
 }
 
 template <typename N, typename E>
-bool Graph<N,E>::addNode(const N &val) {
-	auto res = nodes_.insert(std::make_pair(val, std::shared_ptr<Node>()));
-	if(res.second){
-		res.first->second = std::make_shared<Node>(val);
-		return true;
+Graph<N,E>::Graph(const Graph<N,E> &g) {
+	*this = g;
+}
+
+template <typename N, typename E>
+Graph<N,E> &Graph<N,E>::operator=(const Graph<N,E> &g) {
+	clear();
+
+	for(const auto &entry : g.nodes_) {
+		nodes_.emplace(entry.first, std::make_shared<Node>(entry.first));
 	}
-	return false;
+
+	for(const auto &entry : g.nodes_) {
+		auto &node = nodes_[entry.first]->neighbours_;
+		g.cleanAndGetDegree(*entry.second);
+
+		for(const auto &edge : entry.second->neighbours_) {
+			node.emplace(std::weak_ptr<Node>(nodes_[edge.first.lock()->data_]), edge.second);
+		}
+	}
+
+	return *this;
+}
+
+template <typename N, typename E>
+bool Graph<N,E>::addNode(const N &val) {
+	return nodes_.emplace(val, std::make_shared<Node>(val)).second;
 }
 
 template <typename N, typename E>
@@ -72,19 +92,28 @@ bool Graph<N,E>::replace(const N& oldData, const N& newData) {
 
 template <typename N, typename E>
 void Graph<N,E>::mergeReplace(const N& oldData, const N& newData) {
-	auto oldentry = nodes_.find(oldData), newentry = nodes_.find(newData);
-	if(oldentry == nodes_.end() || newentry == nodes_.end()) {
+	auto oldnode = nodes_.find(oldData), newnode = nodes_.find(newData);
+	if(oldnode == nodes_.end() || newnode == nodes_.end()) {
 		throw std::runtime_error("Node not in graph.");
 	}
 
-	std::weak_ptr<Node> oldWeak = oldentry->second, newweak = newentry->second;
+	std::weak_ptr<Node> oldweak = oldnode->second, newweak = newnode->second;
 
-	for(auto &node : nodes_){
-		auto oldedges = node->neighbours_.find(oldWeak);
-		if(oldedges != node->neighbours_.end()) {
-
+	// incoming edges
+	for(auto &entry : nodes_){
+		auto oldedges = entry.second->neighbours_.find(oldweak);
+		if(oldedges != entry.second->neighbours_.end()) {
+			entry.second->neighbours_[newweak].insert(oldedges->second.cbegin(), oldedges->second.cend());
+			entry.second->neighbours_.erase(oldedges);
 		}
 	}
+
+	// outgoing edges
+	for(auto &entry : oldnode->second->neighbours_) {
+		newnode->second->neighbours_[entry.first].insert(entry.second.cbegin(), entry.second.cend());
+	}
+
+	nodes_.erase(oldnode);
 }
 
 template <typename N, typename E>
@@ -105,7 +134,7 @@ void Graph<N,E>::deleteEdge(const N& src, const N& dst, const E& w) noexcept {
 		return;
 	}
 
-	auto &entry = s->neighbours_.find(d);
+	auto entry = s->neighbours_.find(d);
 	entry->second.erase(w);
 	if(entry->second.empty()) {
 		s->neighbours_.erase(entry);
@@ -143,7 +172,7 @@ void Graph<N,E>::printNodes() const {
 	std::vector<std::pair<unsigned int, std::shared_ptr<Node>>> vec(nodes_.size());
 
 	std::transform(nodes_.cbegin(), nodes_.cend(), vec.begin(), 
-			[this](const auto &entry) { return std::make_pair(this->getDegree(*entry.second), entry.second); });
+			[this](const auto &entry) { return std::make_pair(this->cleanAndGetDegree(*entry.second), entry.second); });
 
 	std::sort(vec.begin(), vec.end(), 
 			[](const auto &a, const auto &b) { 
@@ -171,17 +200,12 @@ void Graph<N,E>::printEdges(const N& val) const {
 	std::cout << "Edges attached to Node " << val << '\n';
 	std::vector< std::pair<typename std::set<E>::const_iterator, std::shared_ptr<Node>> > vec;
 
+	cleanAndGetDegree(*n);
 	for(auto nodeEntry = n->neighbours_.begin(); nodeEntry != n->neighbours_.end();) {
-		if(nodeEntry->first.expired()) {
-			auto tmp = nodeEntry++;
-			n->neighbours_.erase(tmp);
+		for(auto weightEntry = nodeEntry->second.cbegin(); weightEntry != nodeEntry->second.cend(); ++weightEntry) {
+			vec.push_back(std::make_pair(weightEntry, nodeEntry->first.lock()));
 		}
-		else {
-			for(auto weightEntry = nodeEntry->second.cbegin(); weightEntry != nodeEntry->second.cend(); ++weightEntry) {
-				vec.push_back(std::make_pair(weightEntry, nodeEntry->first.lock()));
-			}
-			++nodeEntry;
-		}
+		++nodeEntry;
 	}
 
 	std::sort(vec.begin(), vec.end(), 

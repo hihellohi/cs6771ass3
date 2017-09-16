@@ -23,12 +23,11 @@ namespace gdwg {
 			struct Node {
 				N data_;
 				mutable std::map<std::weak_ptr<Node>, std::set<E>, compareNode> neighbours_;
-				unsigned int degree_;
 
 				Node(const N &data) : data_{data} {}
 			};
 
-			unsigned int getDegree(const Node &n) const;
+			unsigned int cleanAndGetDegree(const Node &n) const;
 
 			std::map<N, std::shared_ptr<Node>> nodes_;
 			
