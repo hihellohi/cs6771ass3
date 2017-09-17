@@ -30,9 +30,10 @@ namespace gdwg {
 			unsigned int cleanAndGetDegree(const Node &n) const;
 
 			std::map<N, std::shared_ptr<Node>> nodes_;
+			mutable typename std::map<N, std::shared_ptr<Node>>::const_iterator it_;
 			
 		public:
-			Graph() = default;
+			Graph();
 			Graph(Graph<N,E> &&) = default;
 			Graph<N,E> &operator=(Graph<N,E> &&) = default;
 
@@ -54,9 +55,14 @@ namespace gdwg {
 
 			void printNodes() const;
 			void printEdges(const N& val) const;
+
+			void begin() const;
+			bool end() const;
+			void next() const;
+			const N& value() const;
 	};
 
 	#include "Graph.tem"
-}
+} //gdwg
 
 #endif

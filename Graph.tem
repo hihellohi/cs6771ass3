@@ -29,6 +29,9 @@ unsigned int Graph<N,E>::cleanAndGetDegree(const Node &n) const {
 }
 
 template <typename N, typename E>
+Graph<N,E>::Graph() : it_{nodes_.cend()} { }
+
+template <typename N, typename E>
 Graph<N,E>::Graph(const Graph<N,E> &g) {
 	*this = g;
 }
@@ -49,6 +52,8 @@ Graph<N,E> &Graph<N,E>::operator=(const Graph<N,E> &g) {
 			node.emplace(std::weak_ptr<Node>(nodes_[edge.first.lock()->data_]), edge.second);
 		}
 	}
+
+	it_ = g.end() ? nodes_.cend() : nodes_.find(g.value());
 
 	return *this;
 }
@@ -79,6 +84,10 @@ bool Graph<N,E>::replace(const N& oldData, const N& newData) {
 		return false;
 	}
 
+	if(!(end() || value() < oldData || oldData < value())) {
+		next();
+	}
+
 	auto entry = nodes_.find(oldData);
 	if(entry == nodes_.end()) {
 		throw std::runtime_error("Node not in graph.");
@@ -95,6 +104,10 @@ void Graph<N,E>::mergeReplace(const N& oldData, const N& newData) {
 	auto oldnode = nodes_.find(oldData), newnode = nodes_.find(newData);
 	if(oldnode == nodes_.end() || newnode == nodes_.end()) {
 		throw std::runtime_error("Node not in graph.");
+	}
+
+	if(!(end() || value() < oldData || oldData < value())) {
+		next();
 	}
 
 	std::weak_ptr<Node> oldweak = oldnode->second, newweak = newnode->second;
@@ -118,6 +131,10 @@ void Graph<N,E>::mergeReplace(const N& oldData, const N& newData) {
 
 template <typename N, typename E>
 void Graph<N,E>::deleteNode(const N &node) noexcept {
+	if(!(end() || value() < node || node < value())) {
+		next();
+	}
+
 	nodes_.erase(node);
 }
 
@@ -144,6 +161,7 @@ void Graph<N,E>::deleteEdge(const N& src, const N& dst, const E& w) noexcept {
 template <typename N, typename E>
 void Graph<N,E>::clear() noexcept {
 	nodes_.clear();
+	it_ = nodes_.cend();
 }
 
 template <typename N, typename E>
@@ -201,11 +219,10 @@ void Graph<N,E>::printEdges(const N& val) const {
 	std::vector< std::pair<typename std::set<E>::const_iterator, std::shared_ptr<Node>> > vec;
 
 	cleanAndGetDegree(*n);
-	for(auto nodeEntry = n->neighbours_.begin(); nodeEntry != n->neighbours_.end();) {
-		for(auto weightEntry = nodeEntry->second.cbegin(); weightEntry != nodeEntry->second.cend(); ++weightEntry) {
-			vec.push_back(std::make_pair(weightEntry, nodeEntry->first.lock()));
+	for(const auto &nodeEntry : n->neighbours_) {
+		for(auto weightEntry = nodeEntry.second.cbegin(); weightEntry != nodeEntry.second.cend(); ++weightEntry) {
+			vec.push_back(std::make_pair(weightEntry, nodeEntry.first.lock()));
 		}
-		++nodeEntry;
 	}
 
 	std::sort(vec.begin(), vec.end(), 
@@ -229,4 +246,24 @@ void Graph<N,E>::printEdges(const N& val) const {
 	else {
 		std::cout << "(null)\n";
 	}
+}
+
+template <typename N, typename E>
+void Graph<N,E>::begin() const {
+	it_ = nodes_.cbegin();
+}
+
+template <typename N, typename E>
+bool Graph<N,E>::end() const {
+	return it_ == nodes_.cend();
+}
+
+template <typename N, typename E>
+void Graph<N,E>::next() const {
+	it_++;
+}
+
+template <typename N, typename E>
+const N& Graph<N,E>::value() const {
+	return it_->first;
 }
