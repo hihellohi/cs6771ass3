@@ -29,7 +29,7 @@ unsigned int Graph<N,E>::cleanAndGetDegree(const Node &n) const {
 }
 
 template <typename N, typename E>
-Graph<N,E>::Graph() : it_{nodes_.cend()} { }
+Graph<N,E>::Graph() : it_{nodes_.cend()}, deletecount_{0} { }
 
 template <typename N, typename E>
 Graph<N,E>::Graph(const Graph<N,E> &g) {
@@ -54,6 +54,7 @@ Graph<N,E> &Graph<N,E>::operator=(const Graph<N,E> &g) {
 	}
 
 	it_ = g.end() ? nodes_.cend() : nodes_.find(g.value());
+	deletecount_ = g.deletecount_;
 
 	return *this;
 }

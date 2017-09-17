@@ -31,6 +31,7 @@ namespace gdwg {
 
 			std::map<N, std::shared_ptr<Node>> nodes_;
 			mutable typename std::map<N, std::shared_ptr<Node>>::const_iterator it_;
+			mutable unsigned deletecount_;
 			
 		public:
 			Graph();
