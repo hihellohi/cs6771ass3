@@ -29,6 +29,8 @@ namespace gdwg {
 
 			unsigned int cleanAndGetDegree(const Node &n) const;
 
+			static const unsigned GC_THRESHOLD = 100;
+
 			std::map<N, std::shared_ptr<Node>> nodes_;
 			mutable typename std::map<N, std::shared_ptr<Node>>::const_iterator it_;
 			mutable unsigned deletecount_;

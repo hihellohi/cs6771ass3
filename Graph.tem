@@ -137,6 +137,13 @@ void Graph<N,E>::deleteNode(const N &node) noexcept {
 	}
 
 	nodes_.erase(node);
+
+	if(++deletecount_ > GC_THRESHOLD) {
+		deletecount_ = 0;
+		for(const auto &entry : nodes_){
+			cleanAndGetDegree(*entry.second);
+		}
+	}
 }
 
 template <typename N, typename E>
